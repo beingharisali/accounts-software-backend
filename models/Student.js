@@ -50,7 +50,6 @@ const StudentSchema = new mongoose.Schema({
     timestamps: true // createdAt aur updatedAt ke liye
 });
 
-// Virtual field to ensure frontend 'id' and backend '_id' are interchangeable
 StudentSchema.virtual('id').get(function () {
     return this._id.toHexString();
 });
