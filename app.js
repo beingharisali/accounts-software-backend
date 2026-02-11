@@ -21,25 +21,51 @@ const app = express();
 // 1. Security & Headers
 app.use(helmet());
 
-// 2. CORS - Frontend connectivity fix
+
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8080", "http://127.0.0.1:8080"],
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:5173"
+      ];
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
   })
 );
 
-app.use(express.json({ limit: "5mb" }));
-app.use(express.urlencoded({ extended: false, limit: "5mb" }));
+// 3. Body Parsers
+app.use(express.json({ limit: "10mb" })); // Limit thori barha di hai bulk upload ke liye
+app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
+// 4. Rate Limiter
 app.use(
   rateLimiter({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500,
+    max: 1000, // Thora barha diya taake bulk actions block na hon
     message: "Too many requests, please try again later.",
   })
 );
+
+// ✅ ADDED: Health Check Route (Render ke liye zaroori hai)
+app.get("/", (req, res) => {
+  res.send('<h1>Accounts Software API</h1><p>Status: Online 🚀</p>');
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "UP", message: "Server is running smoothly" });
+});
 
 // 5. Routes setup
 app.use("/api/v1/auth", authRouter);
@@ -53,7 +79,7 @@ const port = process.env.PORT || 5000;
 
 const start = async () => {
   try {
-    // Database connect hone ka intezar karein
+
     console.log("Connecting to MongoDB...");
     await connectDB(process.env.MONGO_URI);
 
