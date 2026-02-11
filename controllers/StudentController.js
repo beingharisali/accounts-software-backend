@@ -1,13 +1,11 @@
-const Student = require("../models/Student"); // Apna Student model ka path check kar lein
+const Student = require("../models/Student");
 const { StatusCodes } = require("http-status-codes");
 
-// 1. Saare Students ka data hasil karna
 const getAllStudents = async (req, res) => {
     const students = await Student.find({}).sort("-createdAt");
     res.status(StatusCodes.OK).json(students);
 };
 
-// 2. Bulk Add (Ek saath kaafi students save karna)
 const bulkAddStudents = async (req, res) => {
     const studentsData = req.body;
 
@@ -19,7 +17,6 @@ const bulkAddStudents = async (req, res) => {
     res.status(StatusCodes.CREATED).json({ count: students.length });
 };
 
-// 3. Single Student Update
 const updateStudent = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
@@ -64,7 +61,7 @@ const getDailyReport = async (req, res) => {
 
         const report = await Student.aggregate([
             {
-                // Regex use kar rahe hain taake "10-02-2026" mein se month aur year match ho sake
+
                 $match: {
                     date: { $regex: `-${formattedMonth}-${year}$` }
                 }
