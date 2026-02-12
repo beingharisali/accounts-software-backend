@@ -1,12 +1,13 @@
 const { StatusCodes } = require("http-status-codes");
 
 const errorHandlerMiddleware = (err, req, res, next) => {
-  const customError = {
+  // Default error object setup
+  let customError = {
     statusCode: err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
     msg: err.message || "Something went wrong, try again later",
   };
 
-  // Mongoose validation error
+  // 1. Mongoose Validation Error (Missing required fields)
   if (err.name === "ValidationError") {
     customError.msg = Object.values(err.errors)
       .map((item) => item.message)
@@ -14,25 +15,24 @@ const errorHandlerMiddleware = (err, req, res, next) => {
     customError.statusCode = StatusCodes.BAD_REQUEST;
   }
 
-  // Mongoose duplicate key error
+  // 2. Mongoose Duplicate Key Error (e.g., same email registration)
   if (err.code && err.code === 11000) {
     customError.msg = `Duplicate value entered for ${Object.keys(
-      err.keyValue,
+      err.keyValue
     )} field, please choose another value`;
     customError.statusCode = StatusCodes.BAD_REQUEST;
   }
 
-  // Mongoose CastError (invalid ObjectId)
+  // 3. Mongoose CastError (Invalid ID format)
   if (err.name === "CastError") {
     customError.msg = `No item found with id: ${err.value}`;
     customError.statusCode = StatusCodes.NOT_FOUND;
   }
 
-  // Send JSON response
-  res.status(customError.statusCode).json({
+  return res.status(customError.statusCode).json({
     success: false,
-    message: customError.msg,
-    data: err.stack,
+    msg: customError.msg,
+    stack: process.env.NODE_ENV === "production" ? null : err.stack,
   });
 };
 

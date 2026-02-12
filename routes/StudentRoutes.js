@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
+// ✅ Auth middlewares import
+const { auth, authorizeRoles } = require("../middleware/authentication");
 
 // Helper function to get today's date in DD-MM-YYYY format
 const getTodayString = () => {
@@ -11,7 +13,7 @@ const getTodayString = () => {
 // ==========================================
 // 1. DASHBOARD STATS (Main Cards on Home)
 // ==========================================
-router.get('/stats', async (req, res) => {
+router.get('/stats', auth, async (req, res) => {
     try {
         const todayStr = getTodayString();
 
@@ -57,7 +59,7 @@ router.get('/stats', async (req, res) => {
 // ==========================================
 // 2. DAILY REPORT (Cards & Breakdown Sync)
 // ==========================================
-router.get('/daily-report', async (req, res) => {
+router.get('/daily-report', auth, authorizeRoles("ADMIN"), async (req, res) => {
     try {
         const { month, year } = req.query;
         const monthMap = {
@@ -69,7 +71,6 @@ router.get('/daily-report', async (req, res) => {
         const targetMonth = monthMap[month];
         if (!targetMonth) return res.status(400).json({ message: "Invalid Month" });
 
-        // Regex to match "-MM-YYYY" at the end of your string date "10-02-2026"
         const dateRegex = `-${targetMonth}-${year}$`;
 
         const report = await Student.aggregate([
@@ -115,7 +116,7 @@ router.get('/daily-report', async (req, res) => {
 // ==========================================
 // 3. COURSE BREAKDOWN (Fix for Course Analysis)
 // ==========================================
-router.get('/course-breakdown', async (req, res) => {
+router.get('/course-breakdown', auth, authorizeRoles("ADMIN"), async (req, res) => {
     try {
         const { course, month, year } = req.query;
         let matchQuery = {};
@@ -172,7 +173,7 @@ router.get('/course-breakdown', async (req, res) => {
 // ==========================================
 // 4. GET ALL STUDENTS (Search & Table Filter)
 // ==========================================
-router.get('/all', async (req, res) => {
+router.get('/all', auth, async (req, res) => {
     try {
         const { search, status, batch } = req.query;
         let queryObject = {};
@@ -198,7 +199,7 @@ router.get('/all', async (req, res) => {
 // ==========================================
 // 5. BULK ADD & RECOVERY (Excel Upload Logic)
 // ==========================================
-router.post('/bulk-add', async (req, res) => {
+router.post('/bulk-add', auth, async (req, res) => {
     try {
         const studentsData = req.body;
         const processedResults = [];
@@ -220,7 +221,7 @@ router.post('/bulk-add', async (req, res) => {
                             method: data.method,
                             paymentId: data.paymentId,
                             receiptId: data.receiptId,
-                            date: todayStr // Updating your custom date field
+                            date: todayStr
                         }
                     },
                     { new: true, runValidators: true }
@@ -242,9 +243,9 @@ router.post('/bulk-add', async (req, res) => {
 });
 
 // ==========================================
-// 6. UPDATE SINGLE STUDENT (Admin Edit)
+// 6. UPDATE SINGLE STUDENT (Admin & Authorized Staff)
 // ==========================================
-router.put('/update/:id', async (req, res) => {
+router.put('/update/:id', auth, async (req, res) => {
     try {
         const updatedStudent = await Student.findByIdAndUpdate(
             req.params.id,
@@ -259,9 +260,9 @@ router.put('/update/:id', async (req, res) => {
 });
 
 // ==========================================
-// 7. DELETE STUDENT
+// 7. DELETE STUDENT (Strictly Admin)
 // ==========================================
-router.delete('/delete/:id', async (req, res) => {
+router.delete('/delete/:id', auth, authorizeRoles("ADMIN"), async (req, res) => {
     try {
         const deleted = await Student.findByIdAndDelete(req.params.id);
         if (!deleted) return res.status(404).json({ success: false, message: "Not found" });

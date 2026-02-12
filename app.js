@@ -69,9 +69,8 @@ app.get("/health", (req, res) => {
 
 // 5. Routes setup
 app.use("/api/v1/auth", authRouter);
-app.use("/api/students", studentRouter);
+app.use("/api/v1/students", studentRouter);
 
-// 6. Error handlers - Inhein hamesha routes ke baad hona chahiye
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 

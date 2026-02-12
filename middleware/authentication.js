@@ -1,24 +1,39 @@
-const { UnauthenticatedError } = require("../errors");
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const { UnauthenticatedError } = require("../errors");
 
 const auth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
+
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    throw new UnauthenticatedError("Authentication invalid");
+    return next(new UnauthenticatedError("Authentication invalid"));
   }
+
   const token = authHeader.split(" ")[1];
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    // const user = User.findById(payload.id).select('-password')
-    // res.user = user // next line is alternate version of these two lines
-    // attach the user to the job routes
-    req.user = { userId: payload.userId, name: payload.name };
+
+    req.user = {
+      userId: payload.userId,
+      name: payload.name,
+      role: payload.role
+    };
+
     next();
   } catch (error) {
-    throw new UnauthenticatedError("Authentication invalid");
+    return next(new UnauthenticatedError("Authentication invalid"));
   }
 };
 
-module.exports = auth;
+const authorizeRoles = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({
+        msg: "Access Denied: Aap is action ke liye authorized nahi hain."
+      });
+    }
+    next();
+  };
+};
+
+module.exports = { auth, authorizeRoles };
